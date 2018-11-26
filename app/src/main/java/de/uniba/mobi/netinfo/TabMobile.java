@@ -11,7 +11,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class TabMobileActivity extends Fragment {
+public class TabMobile extends Fragment {
 
     private boolean isVisible;
     private boolean isStarted;

@@ -9,13 +9,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-public class TabBlueToothActivity extends Fragment {
+public class TabWifi extends Fragment {
     private boolean isVisible;
     private boolean isStarted;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.tab_bluetooth, container, false);
+        View rootView = inflater.inflate(R.layout.tab_wifi, container, false);
         return rootView;
     }
 
@@ -44,6 +44,6 @@ public class TabBlueToothActivity extends Fragment {
     }
 
     private void notifyUser() {
-        Toast.makeText(getActivity(), "Show bluetooth information", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), "Show Wifi information", Toast.LENGTH_SHORT).show();
     }
 }

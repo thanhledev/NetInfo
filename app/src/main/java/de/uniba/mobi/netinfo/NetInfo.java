@@ -10,6 +10,8 @@ import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
 import android.telephony.TelephonyManager;
+import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
 
 import java.util.List;
@@ -43,6 +45,12 @@ public class NetInfo {
     public static int SIMState;
     public static String SIMOperatorName;
     public static String neighborCellsInfo;
+
+    // for cellLocation
+    public static String mobileCountryCode;
+    public static String mobileNetworkCode;
+    public static int locationAreaCode;
+    public static int cellIdentifier;
 
     // private static instance variable
     private static NetInfo instance;
@@ -126,6 +134,9 @@ public class NetInfo {
                 break;
         }
 
+        // load cellInfo
+        getCellInfo();
+
         // load cell info
         neighborCellsInfo = "List of all neighbor cells\n";
         try {
@@ -162,5 +173,86 @@ public class NetInfo {
 
     public void setActivity(Activity activity) {
         this.parentActivity = activity;
+    }
+
+    public void getCellInfo() {
+        if(phoneType == TelephonyManager.PHONE_TYPE_GSM) {
+            // get cell information of a gsm phone
+            getGSMCellInfo();
+        } else if(phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
+            // get cell information of a cdma phone
+            getCDMACellInfo();
+        } else {
+            // unknown
+            mobileCountryCode = "Unknown";
+            mobileNetworkCode = "Unknown";
+            locationAreaCode = Integer.MAX_VALUE;
+            cellIdentifier = Integer.MAX_VALUE;
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void getGSMCellInfo() {
+        try {
+            GsmCellLocation gsmCellLocation = (GsmCellLocation) telephonyManager.getCellLocation();
+
+            if(gsmCellLocation == null) {
+                mobileCountryCode = "Unknown";
+                mobileNetworkCode = "Unknown";
+                locationAreaCode = Integer.MAX_VALUE;
+                cellIdentifier = Integer.MAX_VALUE;
+            } else {
+                locationAreaCode = gsmCellLocation.getLac();
+                cellIdentifier = gsmCellLocation.getCid();
+
+                // get mcc and mnc codes
+                mobileCountryCode = telephonyManager.getNetworkOperator().substring(0,3);
+                mobileNetworkCode = telephonyManager.getNetworkOperator().substring(3);
+            }
+
+        } catch (Exception e) {
+            Log.e(APP_TAG, e.getMessage());
+            mobileCountryCode = "Unknown";
+            mobileNetworkCode = "Unknown";
+            locationAreaCode = Integer.MAX_VALUE;
+            cellIdentifier = Integer.MAX_VALUE;
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void getCDMACellInfo() {
+        try {
+            CdmaCellLocation cdmaCellLocation = (CdmaCellLocation) telephonyManager.getCellLocation();
+
+            if(cdmaCellLocation == null && SIMState != TelephonyManager.SIM_STATE_READY) {
+                mobileCountryCode = "Unknown";
+                mobileNetworkCode = "Unknown";
+                locationAreaCode = Integer.MAX_VALUE;
+                cellIdentifier = Integer.MAX_VALUE;
+            } else {
+                locationAreaCode = cdmaCellLocation.getNetworkId();
+                cellIdentifier = cdmaCellLocation.getBaseStationId();
+                cellIdentifier /= 16;
+
+                // get mcc and mnc via sim operator
+                mobileCountryCode = telephonyManager.getSimOperator().substring(0,3);
+                mobileNetworkCode = telephonyManager.getSimOperator().substring(3);
+            }
+
+        } catch (Exception e) {
+            Log.e(APP_TAG, e.getMessage());
+            mobileCountryCode = "Unknown";
+            mobileNetworkCode = "Unknown";
+            locationAreaCode = Integer.MAX_VALUE;
+            cellIdentifier = Integer.MAX_VALUE;
+        }
+    }
+
+    public boolean isLocationEnabled() {
+        if(mobileCountryCode == "Unknown" || mobileNetworkCode == "Unknown" ||
+                locationAreaCode == Integer.MAX_VALUE || cellIdentifier == Integer.MAX_VALUE) {
+            return false;
+        }
+        return true;
     }
 }

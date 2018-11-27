@@ -136,6 +136,6 @@ public class TabMobile extends Fragment {
             }
         };
 
-        baseContext.registerReceiver(internalReceiver, new IntentFilter(MainActivity.mInternalOpenCellIdAction));
+        baseContext.registerReceiver(internalReceiver, new IntentFilter(MainActivity.mMobileInternalOpenCellIdAction));
     }
 }

@@ -255,4 +255,67 @@ public class NetInfo {
         }
         return true;
     }
+
+    public String getDataState() {
+        switch (dataState) {
+            case (TelephonyManager.DATA_DISCONNECTED):
+                return "Disconnected";
+            case (TelephonyManager.DATA_CONNECTED):
+                return "Connected";
+            case (TelephonyManager.DATA_CONNECTING):
+                return "Connecting";
+            case (TelephonyManager.DATA_SUSPENDED):
+                return "Suspended";
+            default:
+                return null;
+        }
+    }
+
+    public String getPhoneType() {
+        switch (phoneType) {
+            case (TelephonyManager.PHONE_TYPE_CDMA):
+                return "CDMA";
+            case (TelephonyManager.PHONE_TYPE_GSM):
+                return "GSM";
+            case (TelephonyManager.PHONE_TYPE_NONE):
+                return "Not available";
+            default:
+                return "Unknown";
+        }
+    }
+
+    public String getNetworkClass() {
+        switch (networkType) {
+            case TelephonyManager.NETWORK_TYPE_UNKNOWN:
+                return "Unknown network";
+            case TelephonyManager.NETWORK_TYPE_GSM:
+                return " GSM";
+            case TelephonyManager.NETWORK_TYPE_CDMA:
+            case TelephonyManager.NETWORK_TYPE_1xRTT:
+            case TelephonyManager.NETWORK_TYPE_IDEN:
+                return " 2G";
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+                return " GPRS (2.5G)";
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+                return " EDGE (2.75G)";
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+            case TelephonyManager.NETWORK_TYPE_EVDO_0:
+            case TelephonyManager.NETWORK_TYPE_EVDO_A:
+            case TelephonyManager.NETWORK_TYPE_EVDO_B:
+                return " 3G";
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+                return " H (3G+)";
+            case TelephonyManager.NETWORK_TYPE_EHRPD:
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+            case TelephonyManager.NETWORK_TYPE_TD_SCDMA:
+                return " H+ (3G++)";
+            case TelephonyManager.NETWORK_TYPE_LTE:
+            case TelephonyManager.NETWORK_TYPE_IWLAN:
+                return " 4G";
+            default:
+                return " 4G+";
+        }
+    }
 }

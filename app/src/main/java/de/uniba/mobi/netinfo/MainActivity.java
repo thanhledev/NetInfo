@@ -1,5 +1,9 @@
 package de.uniba.mobi.netinfo;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.support.design.widget.TabLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -10,7 +14,14 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
 
+import de.uniba.mobi.netinfo.services.OpenCellIdService;
+
 public class MainActivity extends AppCompatActivity {
+
+    public static final String mMobileBroadcastOpenCellIdAction = "de.uniba.mobi.netinfo.opencellid";
+    public static final String mMobileInternalOpenCellIdAction = "de.uniba.mobi.netinfo.opencellid.internal";
+
+    private IntentFilter mIntentFilter;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -61,6 +72,17 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        mIntentFilter = new IntentFilter();
+        mIntentFilter.addAction(mMobileBroadcastOpenCellIdAction);
+        registerReceiver(mMobileReceiver, mIntentFilter);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopService(new Intent(getBaseContext(), OpenCellIdService.class));
+        unregisterReceiver(mMobileReceiver);
     }
 
     /*
@@ -133,5 +155,24 @@ public class MainActivity extends AppCompatActivity {
 
             return null;
         }
+    }
+
+    private BroadcastReceiver mMobileReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Intent internalIntent = new Intent();
+            internalIntent.setAction(mMobileInternalOpenCellIdAction);
+            internalIntent.putExtra("OpenCellResp", intent.getStringExtra("OpenCellResp"));
+            internalIntent.putExtra("Updated", intent.getStringExtra("DateTime"));
+            sendBroadcast(internalIntent);
+        }
+    };
+
+    public void startService() {
+        startService(new Intent(getBaseContext(), OpenCellIdService.class));
+    }
+
+    public void stopService() {
+        stopService(new Intent(getBaseContext(), OpenCellIdService.class));
     }
 }

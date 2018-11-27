@@ -1,5 +1,6 @@
 package de.uniba.mobi.netinfo.services;
 
+import de.uniba.mobi.netinfo.MainActivity;
 import de.uniba.mobi.netinfo.opencellid.OpenCellIdHelper;
 
 import android.app.Service;
@@ -10,16 +11,14 @@ import android.support.annotation.Nullable;
 import android.widget.Toast;
 
 import com.android.volley.Request;
-import com.android.volley.Response;
-
 import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Date;
 
 public class OpenCellIdService extends Service {
 
@@ -37,13 +36,23 @@ public class OpenCellIdService extends Service {
                         (Request.Method.POST, OpenCellIdHelper.apiServer, null, response -> {
                             // the response is already constructed as a JSONObject!
                             try {
+                                Date now = new Date();
                                 String status = response.getString("status");
                                 int balance = response.getInt("balance");
                                 double lat = response.getDouble("lat");
                                 double lon = response.getDouble("lon");
                                 int accuracy = response.getInt("accuracy");
                                 String address = response.getString("address");
-                                Toast.makeText(OpenCellIdService.this, "lat: " + lat + ", lon: " + lon + "\nAddress: " + address, Toast.LENGTH_SHORT).show();
+
+                                // broadcast result
+                                Intent broadcastIntent = new Intent();
+                                broadcastIntent.setAction(MainActivity.mMobileBroadcastOpenCellIdAction);
+                                broadcastIntent.putExtra("DateTime", now.toString());
+                                broadcastIntent.putExtra("OpenCellResp", "Lat:" + lat
+                                    + ", lon:" + lon + ", address:" + address + "(acc:"
+                                    + accuracy + ")");
+                                sendBroadcast(broadcastIntent);
+
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
@@ -65,11 +74,12 @@ public class OpenCellIdService extends Service {
                 };
 
                 Volley.newRequestQueue(OpenCellIdService.this).add(jsonRequest);
-                sHandler.postDelayed(this, 30000);
             }
             catch (Exception e) {
                 e.printStackTrace();
             }
+
+            sHandler.postDelayed(this, 30000);
         }
     };
 
@@ -86,9 +96,8 @@ public class OpenCellIdService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "OpenCellIdService Started", Toast.LENGTH_SHORT).show();
-
         // start handler
+        sHandler.removeCallbacks(sendData);
         sHandler.post(sendData);
 
         return START_STICKY;

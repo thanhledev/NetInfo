@@ -1,10 +1,15 @@
 package de.uniba.mobi.netinfo;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.telephony.TelephonyManager;
+import android.text.method.ScrollingMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,19 +18,25 @@ import android.widget.TextView;
 
 public class TabMobile extends Fragment {
 
+    // private properties
     private boolean isVisible;
     private boolean isStarted;
-
+    private boolean isFirstShow;
+    private Context baseContext;
+    private BroadcastReceiver internalReceiver;
     // get widgets
     private TextView mobileDataState;
     private TextView mobilePhoneType;
     private TextView mobileNetworkType;
-    private EditText mobileNeighboringCellInfo;
+    private TextView mobileNeighboringCellInfo;
+    private TextView mobileCellLocationInfo;
     private TextView mobileMCC;
     private TextView mobileMNC;
     private TextView mobileNetworkOperatorName;
     private TextView mobileSIMOperatorName;
     private TextView mobilePhoneNumber;
+
+    // broadcast
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -35,6 +46,9 @@ public class TabMobile extends Fragment {
         mobileDataState = rootView.findViewById(R.id.mobileDataStateVal);
         mobilePhoneType = rootView.findViewById(R.id.mobilePhoneTypeVal);
         mobileNeighboringCellInfo = rootView.findViewById(R.id.mobileNeighboringCellInfoVal);
+        mobileNeighboringCellInfo.setMovementMethod(new ScrollingMovementMethod());
+        mobileCellLocationInfo = rootView.findViewById(R.id.mobileCellLocationInfoVal);
+        mobileCellLocationInfo.setMovementMethod(new ScrollingMovementMethod());
         mobileNetworkType = rootView.findViewById(R.id.mobileNetworkTypeVal);
         mobileMCC = rootView.findViewById(R.id.mobileMCCVal);
         mobileMNC = rootView.findViewById(R.id.mobileMNCVal);
@@ -42,14 +56,23 @@ public class TabMobile extends Fragment {
         mobileSIMOperatorName = rootView.findViewById(R.id.mobileSIMOperatorNameVal);
         mobilePhoneNumber = rootView.findViewById(R.id.mobilePhoneNumber);
 
+        // setup fragment broadcast receiver
+        setupFragment();
+
         return rootView;
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        baseContext = context;
     }
 
     @Override
     public void onStart() {
         super.onStart();
         isStarted = true;
-        if(isVisible) {
+        if(isVisible && !isFirstShow) {
             displayMobileInformation();
         }
     }
@@ -64,21 +87,26 @@ public class TabMobile extends Fragment {
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
         isVisible = isVisibleToUser;
-        if(isVisibleToUser && isStarted) {
+        if(isVisibleToUser && isStarted && !isFirstShow) {
             displayMobileInformation();
         }
     }
 
     private void displayMobileInformation() {
+        // set first load
+        isFirstShow = true;
+
+        // start OpenCellIdService
+        ((MainActivity)getActivity()).startService();
 
         // data state
-        mobileDataState.setText(getDataState());
+        mobileDataState.setText(NetInfo.getInstance().getDataState());
 
         // phone type
-        mobilePhoneType.setText(getPhoneType());
+        mobilePhoneType.setText(NetInfo.getInstance().getPhoneType());
 
         // network type
-        mobileNetworkType.setText(getNetworkClass());
+        mobileNetworkType.setText(NetInfo.getInstance().getNetworkClass());
 
         // neighboring cell info
         mobileNeighboringCellInfo.setText(NetInfo.getInstance().neighborCellsInfo);
@@ -99,66 +127,15 @@ public class TabMobile extends Fragment {
         mobilePhoneNumber.setText(NetInfo.getInstance().lineNumber);
     }
 
-    private String getDataState() {
-        switch (NetInfo.getInstance().dataState) {
-            case (TelephonyManager.DATA_DISCONNECTED):
-                return "Disconnected";
-            case (TelephonyManager.DATA_CONNECTED):
-                return "Connected";
-            case (TelephonyManager.DATA_CONNECTING):
-                return "Connecting";
-            case (TelephonyManager.DATA_SUSPENDED):
-                return "Suspended";
-            default:
-                return null;
-        }
-    }
+    private void setupFragment() {
+        internalReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+            mobileCellLocationInfo.append(intent.getStringExtra("Updated") + "\n" +
+                intent.getStringExtra("OpenCellResp") + "\n");
+            }
+        };
 
-    private String getPhoneType() {
-        switch (NetInfo.getInstance().phoneType) {
-            case (TelephonyManager.PHONE_TYPE_CDMA):
-                return "CDMA";
-            case (TelephonyManager.PHONE_TYPE_GSM):
-                return "GSM";
-            case (TelephonyManager.PHONE_TYPE_NONE):
-                return "Not available";
-            default:
-                return "Unknown";
-        }
-    }
-
-    private String getNetworkClass() {
-        switch (NetInfo.getInstance().networkType) {
-            case TelephonyManager.NETWORK_TYPE_UNKNOWN:
-                return "Unknown network";
-            case TelephonyManager.NETWORK_TYPE_GSM:
-                return " GSM";
-            case TelephonyManager.NETWORK_TYPE_CDMA:
-            case TelephonyManager.NETWORK_TYPE_1xRTT:
-            case TelephonyManager.NETWORK_TYPE_IDEN:
-                return " 2G";
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-                return " GPRS (2.5G)";
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-                return " EDGE (2.75G)";
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-            case TelephonyManager.NETWORK_TYPE_EVDO_0:
-            case TelephonyManager.NETWORK_TYPE_EVDO_A:
-            case TelephonyManager.NETWORK_TYPE_EVDO_B:
-                return " 3G";
-            case TelephonyManager.NETWORK_TYPE_HSPA:
-            case TelephonyManager.NETWORK_TYPE_HSDPA:
-            case TelephonyManager.NETWORK_TYPE_HSUPA:
-                return " H (3G+)";
-            case TelephonyManager.NETWORK_TYPE_EHRPD:
-            case TelephonyManager.NETWORK_TYPE_HSPAP:
-            case TelephonyManager.NETWORK_TYPE_TD_SCDMA:
-                return " H+ (3G++)";
-            case TelephonyManager.NETWORK_TYPE_LTE:
-            case TelephonyManager.NETWORK_TYPE_IWLAN:
-                return " 4G";
-            default:
-                return " 4G+";
-        }
+        baseContext.registerReceiver(internalReceiver, new IntentFilter(MainActivity.mInternalOpenCellIdAction));
     }
 }

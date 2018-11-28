@@ -71,7 +71,8 @@ public class NetInfo {
     private static WifiManager wifiManager;
     private static ConnectivityManager connectivityManager;
 
-    public static int wifiState;
+    private static int wifiState;
+    public static String currentWifiState;
 
     // internal connection information
     public static String internalIpAddress;
@@ -83,12 +84,13 @@ public class NetInfo {
     public static int receivedSignalStrengthIndicator;
 
     // dhcp info
-    public static String dnsServer1;
-    public static String dnsServer2;
-    public static String gateway;
-    public static int leaseDuration;
-    public static String netmask;
-    public static String dhcpServerAddress;
+    public static String dhcpInfo;
+    private static String dnsServer1;
+    private static String dnsServer2;
+    private static String gateway;
+    private static int leaseDuration;
+    private static String netmask;
+    private static String dhcpServer;
 
     // configured network info
     public static String configuredNetworksInfo;
@@ -387,6 +389,7 @@ public class NetInfo {
 
         // get wifi state
         wifiState = wifiManager.getWifiState();
+        currentWifiState = getDeviceWifiState();
 
         if(wifiState == WifiManager.WIFI_STATE_ENABLED) {
             // based on current device api
@@ -426,7 +429,7 @@ public class NetInfo {
             gateway = convertToIpAddress(dhcpInfo.gateway);
             leaseDuration = dhcpInfo.leaseDuration;
             netmask = convertToIpAddress(dhcpInfo.netmask);
-            dhcpServerAddress = convertToIpAddress(dhcpInfo.serverAddress);
+            dhcpServer = convertToIpAddress(dhcpInfo.serverAddress);
 
             // configured networks
             configuredNetworksInfo = getConfiguredNetworksInfo(Build.VERSION.SDK_INT);
@@ -465,7 +468,7 @@ public class NetInfo {
                     gateway = convertToIpAddress(dhcpInfo.gateway);
                     leaseDuration = dhcpInfo.leaseDuration;
                     netmask = convertToIpAddress(dhcpInfo.netmask);
-                    dhcpServerAddress = convertToIpAddress(dhcpInfo.serverAddress);
+                    dhcpServer = convertToIpAddress(dhcpInfo.serverAddress);
 
                     // configured networks
                     configuredNetworksInfo = getConfiguredNetworksInfo(Build.VERSION.SDK_INT);
@@ -476,42 +479,8 @@ public class NetInfo {
 
     private void setWifiInformationUnknown() {
         internalIpAddress = macAddress = serviceSetIdentifier = basicServiceSetIdentifier =
-                 dnsServer1 = dnsServer2 = gateway = netmask = dhcpServerAddress = "Unknown";
+                 dnsServer1 = dnsServer2 = gateway = netmask = dhcpServer = "Unknown";
         linkSpeed = frequency = receivedSignalStrengthIndicator = leaseDuration = Integer.MAX_VALUE;
-    }
-
-    private String convertToIpAddress(int address) {
-        return String.format("%d.%d.%d.%d",
-                (address & 0xff),
-                (address >> 8 & 0xff),
-                (address >> 16 & 0xff),
-                (address >> 24 & 0xff));
-    }
-
-    private String getDeviceMacAddr() {
-        try {
-            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-            for(NetworkInterface nInf : interfaces) {
-                if(!nInf.getName().equalsIgnoreCase("wlan0")) continue;
-
-                byte[] macBytes = nInf.getHardwareAddress();
-                if(macBytes == null) {
-                    return "Unavailable";
-                }
-
-                StringBuilder sb = new StringBuilder();
-                for (byte b: macBytes) {
-                    sb.append(String.format("%02X:", b));
-                }
-
-                if(sb.length() > 0) {
-                    sb.deleteCharAt(sb.length() - 1);
-                }
-
-                return sb.toString();
-            }
-        } catch (Exception e) { }
-        return "02:00:00:00:00:00";
     }
 
     private String getConfiguredNetworksInfo(int apiLevel) {
@@ -551,5 +520,71 @@ public class NetInfo {
         }
 
         return info;
+    }
+
+    private String convertToIpAddress(int address) {
+        return String.format("%d.%d.%d.%d",
+                (address & 0xff),
+                (address >> 8 & 0xff),
+                (address >> 16 & 0xff),
+                (address >> 24 & 0xff));
+    }
+
+    private String getDeviceMacAddr() {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for(NetworkInterface nInf : interfaces) {
+                if(!nInf.getName().equalsIgnoreCase("wlan0")) continue;
+
+                byte[] macBytes = nInf.getHardwareAddress();
+                if(macBytes == null) {
+                    return "Unavailable";
+                }
+
+                StringBuilder sb = new StringBuilder();
+                for (byte b: macBytes) {
+                    sb.append(String.format("%02X:", b));
+                }
+
+                if(sb.length() > 0) {
+                    sb.deleteCharAt(sb.length() - 1);
+                }
+
+                return sb.toString();
+            }
+        } catch (Exception e) { }
+        return "02:00:00:00:00:00";
+    }
+
+    private String getDeviceWifiState() {
+        switch (wifiState) {
+            case WifiManager.WIFI_STATE_ENABLED:
+                return "Enabled";
+            case WifiManager.WIFI_STATE_ENABLING:
+                return "Enabling";
+            case WifiManager.WIFI_STATE_DISABLED:
+                return "Disabled";
+            case WifiManager.WIFI_STATE_DISABLING:
+                return "Disabling";
+            default:
+                return "Unknown";
+        }
+    }
+
+    private String buildDHCPInfo() {
+        String dhcpInfo = "";
+
+        dhcpInfo += "DHCP information:\n";
+
+        dhcpInfo += "Dns1:            " + NetInfo.dnsServer1 + " \n";
+        dhcpInfo += "Dns2:            " + NetInfo.dnsServer2 + " \n";
+        dhcpInfo += "Gateway:         " + NetInfo.gateway + " \n";
+        dhcpInfo += "Lease Duration:  " + NetInfo.leaseDuration + " (s) \n";
+        dhcpInfo += "Netmask:         " + NetInfo.netmask + " \n";
+        dhcpInfo += "Server:          " + NetInfo.dhcpServer + " \n";
+
+        dhcpInfo += "-------------------";
+
+        return dhcpInfo;
     }
 }

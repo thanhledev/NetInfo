@@ -42,6 +42,9 @@ public class TabMobile extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.tab_mobile, container, false);
 
+        // set isFirstShow
+        isFirstShow = true;
+
         // map widgets
         mobileDataState = rootView.findViewById(R.id.mobileDataStateVal);
         mobilePhoneType = rootView.findViewById(R.id.mobilePhoneTypeVal);
@@ -72,7 +75,7 @@ public class TabMobile extends Fragment {
     public void onStart() {
         super.onStart();
         isStarted = true;
-        if(isVisible && !isFirstShow) {
+        if(isVisible && isFirstShow) {
             displayMobileInformation();
         }
     }
@@ -87,14 +90,14 @@ public class TabMobile extends Fragment {
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
         isVisible = isVisibleToUser;
-        if(isVisibleToUser && isStarted && !isFirstShow) {
+        if(isVisibleToUser && isStarted && isFirstShow) {
             displayMobileInformation();
         }
     }
 
     private void displayMobileInformation() {
-        // set first load
-        isFirstShow = true;
+        // set isFirstShow
+        isFirstShow = false;
 
         // start OpenCellIdService
         ((MainActivity)getActivity()).startService();

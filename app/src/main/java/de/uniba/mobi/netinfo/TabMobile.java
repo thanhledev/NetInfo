@@ -42,6 +42,9 @@ public class TabMobile extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.tab_mobile, container, false);
 
+        // set isFirstShow
+        isFirstShow = true;
+
         // map widgets
         mobileDataState = rootView.findViewById(R.id.mobileDataStateVal);
         mobilePhoneType = rootView.findViewById(R.id.mobilePhoneTypeVal);
@@ -72,7 +75,7 @@ public class TabMobile extends Fragment {
     public void onStart() {
         super.onStart();
         isStarted = true;
-        if(isVisible && !isFirstShow) {
+        if(isVisible && isFirstShow) {
             displayMobileInformation();
         }
     }
@@ -87,44 +90,44 @@ public class TabMobile extends Fragment {
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
         isVisible = isVisibleToUser;
-        if(isVisibleToUser && isStarted && !isFirstShow) {
+        if(isVisibleToUser && isStarted && isFirstShow) {
             displayMobileInformation();
         }
     }
 
     private void displayMobileInformation() {
-        // set first load
-        isFirstShow = true;
+        // set isFirstShow
+        isFirstShow = false;
 
         // start OpenCellIdService
         ((MainActivity)getActivity()).startService();
 
         // data state
-        mobileDataState.setText(NetInfo.getInstance().getDataState());
+        mobileDataState.setText(NetInfo.mobileDataState);
 
         // phone type
-        mobilePhoneType.setText(NetInfo.getInstance().getPhoneType());
+        mobilePhoneType.setText(NetInfo.mobilePhoneType);
 
         // network type
-        mobileNetworkType.setText(NetInfo.getInstance().getNetworkClass());
+        mobileNetworkType.setText(NetInfo.mobileNetworkType);
 
         // neighboring cell info
-        mobileNeighboringCellInfo.setText(NetInfo.getInstance().neighborCellsInfo);
+        mobileNeighboringCellInfo.setText(NetInfo.neighborCellsInfo);
 
         // mobile country code
-        mobileMCC.setText(NetInfo.getInstance().networkCountryISO);
+        mobileMCC.setText(NetInfo.networkCountryISO);
 
         // mobile network code
-        mobileMNC.setText(NetInfo.getInstance().networkOperator);
+        mobileMNC.setText(NetInfo.networkOperator);
 
         // network operator name
-        mobileNetworkOperatorName.setText(NetInfo.getInstance().networkOperatorName);
+        mobileNetworkOperatorName.setText(NetInfo.networkOperatorName);
 
         // sim operator name
-        mobileSIMOperatorName.setText(NetInfo.getInstance().SIMOperatorName);
+        mobileSIMOperatorName.setText(NetInfo.SIMOperatorName);
 
         // phone number
-        mobilePhoneNumber.setText(NetInfo.getInstance().lineNumber);
+        mobilePhoneNumber.setText(NetInfo.lineNumber);
     }
 
     private void setupFragment() {

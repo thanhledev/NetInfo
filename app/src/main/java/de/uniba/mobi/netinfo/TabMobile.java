@@ -100,31 +100,31 @@ public class TabMobile extends Fragment {
         ((MainActivity)getActivity()).startService();
 
         // data state
-        mobileDataState.setText(NetInfo.getInstance().getDataState());
+        mobileDataState.setText(NetInfo.mobileDataState);
 
         // phone type
-        mobilePhoneType.setText(NetInfo.getInstance().getPhoneType());
+        mobilePhoneType.setText(NetInfo.mobilePhoneType);
 
         // network type
-        mobileNetworkType.setText(NetInfo.getInstance().getNetworkClass());
+        mobileNetworkType.setText(NetInfo.mobileNetworkType);
 
         // neighboring cell info
-        mobileNeighboringCellInfo.setText(NetInfo.getInstance().neighborCellsInfo);
+        mobileNeighboringCellInfo.setText(NetInfo.neighborCellsInfo);
 
         // mobile country code
-        mobileMCC.setText(NetInfo.getInstance().networkCountryISO);
+        mobileMCC.setText(NetInfo.networkCountryISO);
 
         // mobile network code
-        mobileMNC.setText(NetInfo.getInstance().networkOperator);
+        mobileMNC.setText(NetInfo.networkOperator);
 
         // network operator name
-        mobileNetworkOperatorName.setText(NetInfo.getInstance().networkOperatorName);
+        mobileNetworkOperatorName.setText(NetInfo.networkOperatorName);
 
         // sim operator name
-        mobileSIMOperatorName.setText(NetInfo.getInstance().SIMOperatorName);
+        mobileSIMOperatorName.setText(NetInfo.SIMOperatorName);
 
         // phone number
-        mobilePhoneNumber.setText(NetInfo.getInstance().lineNumber);
+        mobilePhoneNumber.setText(NetInfo.lineNumber);
     }
 
     private void setupFragment() {
@@ -136,6 +136,6 @@ public class TabMobile extends Fragment {
             }
         };
 
-        baseContext.registerReceiver(internalReceiver, new IntentFilter(MainActivity.mInternalOpenCellIdAction));
+        baseContext.registerReceiver(internalReceiver, new IntentFilter(MainActivity.mMobileInternalOpenCellIdAction));
     }
 }

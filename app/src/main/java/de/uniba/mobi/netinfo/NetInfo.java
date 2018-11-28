@@ -1,9 +1,18 @@
 package de.uniba.mobi.netinfo;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
+import android.telecom.Connection;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
 import android.telephony.CellInfoGsm;
@@ -14,6 +23,8 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
 
+import java.net.NetworkInterface;
+import java.util.Collections;
 import java.util.List;
 
 import de.uniba.mobi.netinfo.readers.CellInfoReader;
@@ -27,7 +38,8 @@ public class NetInfo {
 
     private Handler mHanlder = new Handler();
 
-    // public static variables
+    // private & public static variables for mobile information
+    private static TelephonyManager telephonyManager;
     public static String IMEINumber;
     public static String subscriberId;
     public static String SIMSerialNumber;
@@ -38,19 +50,48 @@ public class NetInfo {
     public static String SIMCountryISO;
     public static String softwareVersion;
     public static String voiceMailNumber;
-    public static int dataState;
-    public static int phoneType;
-    public static int networkType;
+    private static int dataState;
+    public static String mobileDataState;
+    private static int phoneType;
+    public static String mobilePhoneType;
+    private static int networkType;
+    public static String mobileNetworkType;
     public static boolean isRoaming;
     public static int SIMState;
     public static String SIMOperatorName;
     public static String neighborCellsInfo;
 
-    // for cellLocation
+    // mobile cell location
     public static String mobileCountryCode;
     public static String mobileNetworkCode;
     public static int locationAreaCode;
     public static int cellIdentifier;
+
+    // private & public variables for wifi information
+    private static WifiManager wifiManager;
+    private static ConnectivityManager connectivityManager;
+
+    public static int wifiState;
+
+    // internal connection information
+    public static String internalIpAddress;
+    public static String macAddress;
+    public static int linkSpeed;
+    public static String serviceSetIdentifier;
+    public static String basicServiceSetIdentifier;
+    public static int frequency;
+    public static int receivedSignalStrengthIndicator;
+
+    // dhcp info
+    public static String dnsServer1;
+    public static String dnsServer2;
+    public static String gateway;
+    public static int leaseDuration;
+    public static String netmask;
+    public static String dhcpServerAddress;
+
+    // configured network info
+    public static String configuredNetworksInfo;
 
     // private static instance variable
     private static NetInfo instance;
@@ -58,7 +99,6 @@ public class NetInfo {
 
     // private variables
     private Activity parentActivity;
-    private static TelephonyManager telephonyManager;
 
     private NetInfo() {
 
@@ -76,16 +116,27 @@ public class NetInfo {
         return instance;
     }
 
+    public void setActivity(Activity activity) {
+        this.parentActivity = activity;
+    }
+
+    /**
+     * Network methods
+     */
+
     @SuppressWarnings("MissingPermission")
-    public void getInformation() {
+    public void getNetworkInformation() {
 
         telephonyManager = (TelephonyManager) this.parentActivity.getApplicationContext()
                 .getSystemService(Context.TELEPHONY_SERVICE);
 
         // map values
         dataState = telephonyManager.getDataState();
+        mobileDataState = getDeviceDataState();
         phoneType = telephonyManager.getPhoneType();
+        mobilePhoneType = getDevicePhoneType();
         networkType = telephonyManager.getNetworkType();
+        mobileNetworkType = getDeviceNetworkType();
 
         IMEINumber = telephonyManager.getDeviceId();
         subscriberId = telephonyManager.getSubscriberId();
@@ -169,10 +220,12 @@ public class NetInfo {
         } catch (NullPointerException npe) {
             Log.e(APP_TAG, npe.getMessage());
         }
-    }
 
-    public void setActivity(Activity activity) {
-        this.parentActivity = activity;
+        // load wifi info
+        getWifiInformation();
+        // load bluetooth info
+
+        // load device info
     }
 
     public void getCellInfo() {
@@ -256,7 +309,7 @@ public class NetInfo {
         return true;
     }
 
-    public String getDataState() {
+    private String getDeviceDataState() {
         switch (dataState) {
             case (TelephonyManager.DATA_DISCONNECTED):
                 return "Disconnected";
@@ -271,7 +324,7 @@ public class NetInfo {
         }
     }
 
-    public String getPhoneType() {
+    private String getDevicePhoneType() {
         switch (phoneType) {
             case (TelephonyManager.PHONE_TYPE_CDMA):
                 return "CDMA";
@@ -284,7 +337,7 @@ public class NetInfo {
         }
     }
 
-    public String getNetworkClass() {
+    private String getDeviceNetworkType() {
         switch (networkType) {
             case TelephonyManager.NETWORK_TYPE_UNKNOWN:
                 return "Unknown network";
@@ -317,5 +370,186 @@ public class NetInfo {
             default:
                 return " 4G+";
         }
+    }
+
+    /**
+     * Wifi methods
+     */
+
+    public void getWifiInformation() {
+
+        // init managers
+        connectivityManager = (ConnectivityManager) this.parentActivity.getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        wifiManager = (WifiManager) this.parentActivity.getApplicationContext()
+                .getSystemService(Context.WIFI_SERVICE);
+
+        // get wifi state
+        wifiState = wifiManager.getWifiState();
+
+        if(wifiState == WifiManager.WIFI_STATE_ENABLED) {
+            // based on current device api
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                nwGetConnectedWifiInfo();
+            } else {
+                owGetConnectedWifiInfo();
+            }
+        } else {
+            setWifiInformationUnknown();
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private void owGetConnectedWifiInfo() {
+        // check wifi connected
+        NetworkInfo mWifi = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        if(!mWifi.isConnected()) {
+            setWifiInformationUnknown();
+        } else {
+            WifiInfo connectedInfo = wifiManager.getConnectionInfo();
+
+            // connection information
+            internalIpAddress = convertToIpAddress(connectedInfo.getIpAddress());
+            macAddress = connectedInfo.getMacAddress();
+            linkSpeed = connectedInfo.getLinkSpeed();
+            serviceSetIdentifier = connectedInfo.getSSID();
+            basicServiceSetIdentifier = connectedInfo.getBSSID();
+            receivedSignalStrengthIndicator = connectedInfo.getRssi();
+            frequency = Integer.MAX_VALUE;
+
+            // dhcp info
+            DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+
+            dnsServer1 = convertToIpAddress(dhcpInfo.dns1);
+            dnsServer2 = convertToIpAddress(dhcpInfo.dns2);
+            gateway = convertToIpAddress(dhcpInfo.gateway);
+            leaseDuration = dhcpInfo.leaseDuration;
+            netmask = convertToIpAddress(dhcpInfo.netmask);
+            dhcpServerAddress = convertToIpAddress(dhcpInfo.serverAddress);
+
+            // configured networks
+            configuredNetworksInfo = getConfiguredNetworksInfo(Build.VERSION.SDK_INT);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void nwGetConnectedWifiInfo() {
+        // check wifi connected
+        Network[] networks = connectivityManager.getAllNetworks();
+
+        if(networks == null || networks.length == 0) {
+            setWifiInformationUnknown();
+        } else {
+            for (int i = 0; i < networks.length; i++) {
+                Network net = networks[i];
+                NetworkInfo netInfo = connectivityManager.getNetworkInfo(net);
+
+                if(netInfo.getType() == ConnectivityManager.TYPE_WIFI && netInfo.isConnected()) {
+                    WifiInfo connectedInfo = wifiManager.getConnectionInfo();
+
+                    // connection information
+                    internalIpAddress = convertToIpAddress(connectedInfo.getIpAddress());
+                    macAddress = getDeviceMacAddr();
+                    linkSpeed = connectedInfo.getLinkSpeed();
+                    serviceSetIdentifier = connectedInfo.getSSID();
+                    basicServiceSetIdentifier = connectedInfo.getBSSID();
+                    receivedSignalStrengthIndicator = connectedInfo.getRssi();
+                    frequency = connectedInfo.getFrequency();
+
+                    // dhcp information
+                    DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+
+                    dnsServer1 = convertToIpAddress(dhcpInfo.dns1);
+                    dnsServer2 = convertToIpAddress(dhcpInfo.dns2);
+                    gateway = convertToIpAddress(dhcpInfo.gateway);
+                    leaseDuration = dhcpInfo.leaseDuration;
+                    netmask = convertToIpAddress(dhcpInfo.netmask);
+                    dhcpServerAddress = convertToIpAddress(dhcpInfo.serverAddress);
+
+                    // configured networks
+                    configuredNetworksInfo = getConfiguredNetworksInfo(Build.VERSION.SDK_INT);
+                }
+            }
+        }
+    }
+
+    private void setWifiInformationUnknown() {
+        internalIpAddress = macAddress = serviceSetIdentifier = basicServiceSetIdentifier =
+                 dnsServer1 = dnsServer2 = gateway = netmask = dhcpServerAddress = "Unknown";
+        linkSpeed = frequency = receivedSignalStrengthIndicator = leaseDuration = Integer.MAX_VALUE;
+    }
+
+    private String convertToIpAddress(int address) {
+        return String.format("%d.%d.%d.%d",
+                (address & 0xff),
+                (address >> 8 & 0xff),
+                (address >> 16 & 0xff),
+                (address >> 24 & 0xff));
+    }
+
+    private String getDeviceMacAddr() {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for(NetworkInterface nInf : interfaces) {
+                if(!nInf.getName().equalsIgnoreCase("wlan0")) continue;
+
+                byte[] macBytes = nInf.getHardwareAddress();
+                if(macBytes == null) {
+                    return "Unavailable";
+                }
+
+                StringBuilder sb = new StringBuilder();
+                for (byte b: macBytes) {
+                    sb.append(String.format("%02X:", b));
+                }
+
+                if(sb.length() > 0) {
+                    sb.deleteCharAt(sb.length() - 1);
+                }
+
+                return sb.toString();
+            }
+        } catch (Exception e) { }
+        return "02:00:00:00:00:00";
+    }
+
+    private String getConfiguredNetworksInfo(int apiLevel) {
+        String info = "";
+
+        List<WifiConfiguration> wifiConfigs = wifiManager.getConfiguredNetworks();
+
+        if(wifiConfigs.size() > 0) {
+            info += "Found " + wifiConfigs.size() + " configured network(s).\n";
+
+            int count = 1;
+
+            for(WifiConfiguration config: wifiConfigs) {
+                info += "Detail information of network#" + count + ":\n";
+                info += "BSSID:       " + config.BSSID + " \n";
+                if(apiLevel >= Build.VERSION_CODES.LOLLIPOP) {
+                    info += "FQDN:        " + config.FQDN + " \n";
+                }
+                info += "SSID:        " + config.SSID + " \n";
+                info += "NetworkId:   " + config.networkId + " \n";
+                switch (config.status) {
+                    case WifiConfiguration.Status.CURRENT:
+                        info += "Status:   Connected \n";
+                        break;
+                    case WifiConfiguration.Status.ENABLED:
+                        info += "Status:   Enabled \n";
+                        break;
+                    default:
+                        info += "Status:   Disabled \n";
+                        break;
+                }
+                info += "--------------------------------\n";
+            }
+
+        } else {
+            info += "Not found any configured networks\n";
+        }
+
+        return info;
     }
 }

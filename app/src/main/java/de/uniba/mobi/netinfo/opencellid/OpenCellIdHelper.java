@@ -43,9 +43,7 @@ public class OpenCellIdHelper {
 
             JSONObject mainJSONObj = new JSONObject();
             mainJSONObj.put("token", apiToken);
-            mainJSONObj.put("radio", NetInfo.phoneType
-                    == TelephonyManager.PHONE_TYPE_GSM ? "gsm" : "cdma"
-            );
+            mainJSONObj.put("radio", NetInfo.mobilePhoneType);
             mainJSONObj.put("mcc", NetInfo.mobileCountryCode);
             mainJSONObj.put("mnc", NetInfo.mobileNetworkCode);
             mainJSONObj.put("address", 1);

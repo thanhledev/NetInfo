@@ -11,9 +11,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import org.w3c.dom.Text;
 
 public class TabWifi extends Fragment {
     private boolean isVisible;
@@ -27,6 +24,7 @@ public class TabWifi extends Fragment {
     private TextView wifiIpAddress;
     private TextView wifiMacAddress;
     private TextView wifiLinkSpeed;
+    private TextView wifiFrequency;
     private TextView wifiSSID;
     private TextView wifiBSSID;
     private TextView wifiRSSI;
@@ -45,6 +43,7 @@ public class TabWifi extends Fragment {
         wifiIpAddress = rootView.findViewById(R.id.wifiIpAddressVal);
         wifiMacAddress = rootView.findViewById(R.id.wifiMacAddressVal);
         wifiLinkSpeed = rootView.findViewById(R.id.wifiLinkSpeedVal);
+        wifiFrequency = rootView.findViewById(R.id.wifiFrequencyVal);
         wifiSSID = rootView.findViewById(R.id.wifiSSIDVal);
         wifiBSSID = rootView.findViewById(R.id.wifiBSSIDVal);
         wifiRSSI = rootView.findViewById(R.id.wifiRSSIVal);
@@ -91,7 +90,7 @@ public class TabWifi extends Fragment {
 
     private void displayWifiInformation() {
         // set isFirstShow
-        isFirstShow = false;
+        if(isFirstShow) isFirstShow = false;
 
         // get wifi state
         wifiConnectionState.setText(NetInfo.currentWifiState);
@@ -105,6 +104,10 @@ public class TabWifi extends Fragment {
         // get link speed
         wifiLinkSpeed.setText(NetInfo.linkSpeed != Integer.MAX_VALUE ?
             String.format("%d Mbps", NetInfo.linkSpeed) : "Unavailable");
+
+        // get frequency
+        wifiFrequency.setText(NetInfo.frequency != Integer.MAX_VALUE ?
+                String.format("%d MHz", NetInfo.frequency) : "Unavailable");
 
         // get SSID
         wifiSSID.setText(NetInfo.serviceSetIdentifier);

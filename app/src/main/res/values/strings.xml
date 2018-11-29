@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">NetInfo</string>
-    <string name="tab_text_1">Wifi</string>
-    <string name="tab_text_2">BT</string>
-    <string name="tab_text_3">Mobile</string>
+    <string name="tab_text_1">Network</string>
+    <string name="tab_text_2">Wifi</string>
+    <string name="tab_text_3">BT</string>
+    <string name="tab_text_4">Mobile</string>
     <string name="action_settings">Settings</string>
     <string name="section_format">Hello World from section: %1$d</string>
     <string name="permission_read_phone_state_rationale">

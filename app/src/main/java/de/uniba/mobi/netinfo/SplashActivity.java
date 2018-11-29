@@ -97,7 +97,10 @@ public class SplashActivity extends AppCompatActivity {
     private void loadNetInfo() {
 
         NetInfo.getInstance().setActivity(this);
+        NetInfo.getInstance().getMobileInformation();
+        NetInfo.getInstance().getWifiInformation();
         NetInfo.getInstance().getNetworkInformation();
+        NetInfo.getInstance().getBluetoothInformation();
 
         runOnUiThread(() -> {
             Intent newIntent = new Intent(SplashActivity.this, MainActivity.class);

@@ -97,7 +97,7 @@ public class TabMobile extends Fragment {
 
     private void displayMobileInformation() {
         // set isFirstShow
-        isFirstShow = false;
+        if(isFirstShow) isFirstShow = false;
 
         // start OpenCellIdService
         ((MainActivity)getActivity()).startService();

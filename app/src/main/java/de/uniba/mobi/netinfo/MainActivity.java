@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(getBaseContext(), OpenCellIdService.class));
+        stopService();
         unregisterReceiver(mMobileReceiver);
     }
 
@@ -123,12 +123,15 @@ public class MainActivity extends AppCompatActivity {
         public Fragment getItem(int position) {
             switch (position) {
                 case 0:
+                    TabNetwork tabNetwork = new TabNetwork();
+                    return tabNetwork;
+                case 1:
                     TabWifi tabWifi = new TabWifi();
                     return tabWifi;
-                case 1:
+                case 2:
                     TabBluetooth tabBluetooth = new TabBluetooth();
                     return tabBluetooth;
-                case 2:
+                case 3:
                     TabMobile tabMobile = new TabMobile();
                     return tabMobile;
                 default:
@@ -139,17 +142,19 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public int getCount() {
             // Show 3 total pages.
-            return 3;
+            return 4;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
                 case 0:
-                    return "Wifi";
+                    return "Network";
                 case 1:
-                    return "Bluetooth";
+                    return "Wifi";
                 case 2:
+                    return "Bluetooth";
+                case 3:
                     return "Mobile";
             }
 

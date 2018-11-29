@@ -2,6 +2,9 @@ package de.uniba.mobi.netinfo;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
@@ -23,9 +26,12 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.NetworkInterface;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import de.uniba.mobi.netinfo.readers.CellInfoReader;
 import de.uniba.mobi.netinfo.readers.cdma.CdmaCellInfoReader;
@@ -38,62 +44,81 @@ public class NetInfo {
 
     private Handler mHanlder = new Handler();
 
-    // private & public static variables for mobile information
+    // system managers
+    private static WifiManager wifiManager;
+    private static ConnectivityManager connectivityManager;
     private static TelephonyManager telephonyManager;
-    public static String IMEINumber;
-    public static String subscriberId;
-    public static String SIMSerialNumber;
-    public static String lineNumber;
-    public static String networkCountryISO;
-    public static String networkOperator;
-    public static String networkOperatorName;
-    public static String SIMCountryISO;
-    public static String softwareVersion;
-    public static String voiceMailNumber;
+    private static BluetoothManager bluetoothManager;
+    private static BluetoothAdapter bluetoothAdapter;
+
+    // private & public static variables for mobile information
+    public static String IMEINumber = "";
+    public static String subscriberId = "";
+    public static String SIMSerialNumber = "";
+    public static String lineNumber = "";
+    public static String networkCountryISO = "";
+    public static String networkOperator = "";
+    public static String networkOperatorName = "";
+    public static String SIMCountryISO = "";
+    public static String softwareVersion = "";
+    public static String voiceMailNumber = "";
     private static int dataState;
-    public static String mobileDataState;
+    public static String mobileDataState = "";
     private static int phoneType;
-    public static String mobilePhoneType;
+    public static String mobilePhoneType = "";
     private static int networkType;
-    public static String mobileNetworkType;
+    public static String mobileNetworkType = "";
     public static boolean isRoaming;
     public static int SIMState;
-    public static String SIMOperatorName;
-    public static String neighborCellsInfo;
+    public static String SIMOperatorName = "";
+    public static String neighborCellsInfo = "";
 
     // mobile cell location
-    public static String mobileCountryCode;
-    public static String mobileNetworkCode;
+    public static String mobileCountryCode = "";
+    public static String mobileNetworkCode = "";
     public static int locationAreaCode;
     public static int cellIdentifier;
 
     // private & public variables for wifi information
-    private static WifiManager wifiManager;
-    private static ConnectivityManager connectivityManager;
-
     private static int wifiState;
-    public static String currentWifiState;
+    public static String currentWifiState = "";
 
     // internal connection information
-    public static String internalIpAddress;
-    public static String macAddress;
+    public static String internalIpAddress = "";
+    public static String macAddress = "";
     public static int linkSpeed;
-    public static String serviceSetIdentifier;
-    public static String basicServiceSetIdentifier;
+    public static String serviceSetIdentifier = "";
+    public static String basicServiceSetIdentifier = "";
     public static int frequency;
     public static int receivedSignalStrengthIndicator;
 
     // dhcp info
-    public static String dhcpInfo;
-    private static String dnsServer1;
-    private static String dnsServer2;
-    private static String gateway;
+    public static String dhcpInfo = "";
+    private static String dnsServer1 = "";
+    private static String dnsServer2 = "";
+    private static String gateway = "";
     private static int leaseDuration;
-    private static String netmask;
-    private static String dhcpServer;
+    private static String netmask = "";
+    private static String dhcpServer = "";
 
     // configured network info
-    public static String configuredNetworksInfo;
+    public static String configuredNetworksInfo = "";
+
+    // private & public variables for network information
+    public static String activeNetworkInfo = "";
+    public static String allNetworkInfo = "";
+
+    // private & public variables for bluetooth information
+    public static String bluetoothDeviceState = "";
+    public static String bluetoothDeviceName = "";
+    public static String bluetoothDeviceAddress = "";
+    public static boolean bluetoothLE2MPHY;
+    public static boolean bluetoothLECodedPHY;
+    public static boolean bluetoothLEExtendedAdvertising;
+    public static boolean bluetoothMultiAdvertisement;
+    public static boolean bluetoothOffloadedFilters;
+    public static boolean bluetoothOffloadedScanBatching;
+    public static String bluetoothPairedDevicesInfo = "";
 
     // private static instance variable
     private static NetInfo instance;
@@ -123,11 +148,11 @@ public class NetInfo {
     }
 
     /**
-     * Network methods
+     * Mobile methods
      */
 
     @SuppressWarnings("MissingPermission")
-    public void getNetworkInformation() {
+    public void getMobileInformation() {
 
         telephonyManager = (TelephonyManager) this.parentActivity.getApplicationContext()
                 .getSystemService(Context.TELEPHONY_SERVICE);
@@ -222,12 +247,6 @@ public class NetInfo {
         } catch (NullPointerException npe) {
             Log.e(APP_TAG, npe.getMessage());
         }
-
-        // load wifi info
-        getWifiInformation();
-        // load bluetooth info
-
-        // load device info
     }
 
     public void getCellInfo() {
@@ -248,29 +267,25 @@ public class NetInfo {
 
     @SuppressWarnings("MissingPermission")
     private void getGSMCellInfo() {
-        try {
-            GsmCellLocation gsmCellLocation = (GsmCellLocation) telephonyManager.getCellLocation();
+        GsmCellLocation gsmCellLocation = (GsmCellLocation) telephonyManager.getCellLocation();
 
-            if(gsmCellLocation == null) {
-                mobileCountryCode = "Unknown";
-                mobileNetworkCode = "Unknown";
-                locationAreaCode = Integer.MAX_VALUE;
-                cellIdentifier = Integer.MAX_VALUE;
-            } else {
-                locationAreaCode = gsmCellLocation.getLac();
-                cellIdentifier = gsmCellLocation.getCid();
-
-                // get mcc and mnc codes
-                mobileCountryCode = telephonyManager.getNetworkOperator().substring(0,3);
-                mobileNetworkCode = telephonyManager.getNetworkOperator().substring(3);
-            }
-
-        } catch (Exception e) {
-            Log.e(APP_TAG, e.getMessage());
+        if(gsmCellLocation == null) {
             mobileCountryCode = "Unknown";
             mobileNetworkCode = "Unknown";
             locationAreaCode = Integer.MAX_VALUE;
             cellIdentifier = Integer.MAX_VALUE;
+        } else {
+            locationAreaCode = gsmCellLocation.getLac();
+            cellIdentifier = gsmCellLocation.getCid();
+
+            // get mcc and mnc codes
+            try {
+                mobileCountryCode = telephonyManager.getNetworkOperator().substring(0, 3);
+                mobileNetworkCode = telephonyManager.getNetworkOperator().substring(3);
+            } catch (Exception e) {
+                mobileCountryCode = "Unknown";
+                mobileNetworkCode = "Unknown";
+            }
         }
     }
 
@@ -398,6 +413,10 @@ public class NetInfo {
             } else {
                 owGetConnectedWifiInfo();
             }
+
+            // combine and reform dhcp info
+            dhcpInfo = buildDHCPInfo();
+
         } else {
             setWifiInformationUnknown();
         }
@@ -461,14 +480,14 @@ public class NetInfo {
                     frequency = connectedInfo.getFrequency();
 
                     // dhcp information
-                    DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+                    DhcpInfo dhcpInformation = wifiManager.getDhcpInfo();
 
-                    dnsServer1 = convertToIpAddress(dhcpInfo.dns1);
-                    dnsServer2 = convertToIpAddress(dhcpInfo.dns2);
-                    gateway = convertToIpAddress(dhcpInfo.gateway);
-                    leaseDuration = dhcpInfo.leaseDuration;
-                    netmask = convertToIpAddress(dhcpInfo.netmask);
-                    dhcpServer = convertToIpAddress(dhcpInfo.serverAddress);
+                    dnsServer1 = convertToIpAddress(dhcpInformation.dns1);
+                    dnsServer2 = convertToIpAddress(dhcpInformation.dns2);
+                    gateway = convertToIpAddress(dhcpInformation.gateway);
+                    leaseDuration = dhcpInformation.leaseDuration;
+                    netmask = convertToIpAddress(dhcpInformation.netmask);
+                    dhcpServer = convertToIpAddress(dhcpInformation.serverAddress);
 
                     // configured networks
                     configuredNetworksInfo = getConfiguredNetworksInfo(Build.VERSION.SDK_INT);
@@ -572,19 +591,318 @@ public class NetInfo {
     }
 
     private String buildDHCPInfo() {
-        String dhcpInfo = "";
+        String info = "";
 
-        dhcpInfo += "DHCP information:\n";
+        info += "DHCP information:\n";
 
-        dhcpInfo += "Dns1:            " + NetInfo.dnsServer1 + " \n";
-        dhcpInfo += "Dns2:            " + NetInfo.dnsServer2 + " \n";
-        dhcpInfo += "Gateway:         " + NetInfo.gateway + " \n";
-        dhcpInfo += "Lease Duration:  " + NetInfo.leaseDuration + " (s) \n";
-        dhcpInfo += "Netmask:         " + NetInfo.netmask + " \n";
-        dhcpInfo += "Server:          " + NetInfo.dhcpServer + " \n";
+        info += "Dns1:            " + NetInfo.dnsServer1 + " \n";
+        info += "Dns2:            " + NetInfo.dnsServer2 + " \n";
+        info += "Gateway:         " + NetInfo.gateway + " \n";
+        info += "Lease Duration:  " + NetInfo.leaseDuration + " (s) \n";
+        info += "Netmask:         " + NetInfo.netmask + " \n";
+        info += "Server:          " + NetInfo.dhcpServer + " \n";
 
-        dhcpInfo += "-------------------";
+        info += "-------------------";
 
-        return dhcpInfo;
+        return info;
     }
+
+    /**
+     * Network methods
+     */
+    public void getNetworkInformation() {
+        // get active network info
+        getActiveNetworkInfo();
+
+        // get all networks info
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // new way
+            nwGetAllNetworksInfo();
+        } else {
+            // old way
+            owGetAllNetworksInfo();
+        }
+    }
+
+    private void getActiveNetworkInfo() {
+        // get active network info
+        NetworkInfo active = connectivityManager.getActiveNetworkInfo();
+        if(active != null) {
+            // check out for type
+            switch (active.getType()) {
+                case ConnectivityManager.TYPE_WIFI:
+                    activeNetworkInfo += "Type: WIFI; Status: " + (active.isConnected() ? "Connected" :
+                        "Disconnected");
+                    break;
+                case ConnectivityManager.TYPE_MOBILE:
+                    activeNetworkInfo += "Type: MOBILE; Status: " + (active.isConnected() ? "Connected" :
+                            "Disconnected");
+                    break;
+                case ConnectivityManager.TYPE_BLUETOOTH:
+                    activeNetworkInfo += "Type: BLUETOOTH; Status: " + (active.isConnected() ? "Connected" :
+                            "Disconnected");
+                    break;
+                case ConnectivityManager.TYPE_WIMAX:
+                    activeNetworkInfo += "Type: WIMAX; Status: " + (active.isConnected() ? "Connected" :
+                            "Disconnected");
+                    break;
+                case ConnectivityManager.TYPE_VPN:
+                    activeNetworkInfo += "Type: VPN; Status: " + (active.isConnected() ? "Connected" :
+                            "Disconnected");
+                    break;
+                default:
+                    activeNetworkInfo += "Type: Unknown; Status: Unavailable";
+                    break;
+            }
+        } else {
+
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void nwGetAllNetworksInfo() {
+        Network[] allNetworks = connectivityManager.getAllNetworks();
+
+        if(allNetworks != null && allNetworks.length > 0) {
+            allNetworkInfo += "Found " + allNetworks.length + " networks\n";
+            int count = 1;
+
+            for(Network net: allNetworks) {
+
+                NetworkInfo netInfo = connectivityManager.getNetworkInfo(net);
+
+                if(netInfo != null) {
+                    allNetworkInfo += String.format("--------[Network#%d]---------\n", count);
+                    // check out for type
+                    switch (netInfo.getType()) {
+                        case ConnectivityManager.TYPE_WIFI:
+                            allNetworkInfo += "Type: WIFI; Status: " + (netInfo.isConnected() ? "Connected" :
+                                    "Disconnected");
+                            break;
+                        case ConnectivityManager.TYPE_MOBILE:
+                            allNetworkInfo += "Type: MOBILE; Status: " + (netInfo.isConnected() ? "Connected" :
+                                    "Disconnected");
+                            break;
+                        case ConnectivityManager.TYPE_BLUETOOTH:
+                            allNetworkInfo += "Type: BLUETOOTH; Status: " + (netInfo.isConnected() ? "Connected" :
+                                    "Disconnected");
+                            break;
+                        case ConnectivityManager.TYPE_WIMAX:
+                            allNetworkInfo += "Type: WIMAX; Status: " + (netInfo.isConnected() ? "Connected" :
+                                    "Disconnected");
+                            break;
+                        case ConnectivityManager.TYPE_VPN:
+                            allNetworkInfo += "Type: VPN; Status: " + (netInfo.isConnected() ? "Connected" :
+                                    "Disconnected");
+                            break;
+                        default:
+                            allNetworkInfo += "Type: Unknown; Status: Unavailable";
+                            break;
+                    }
+                }
+                count++;
+            }
+            allNetworkInfo += "----------------------------\n";
+
+        } else {
+            allNetworkInfo += "Found 0 available network\n";
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private void owGetAllNetworksInfo() {
+        NetworkInfo[] allNetworkInfos = connectivityManager.getAllNetworkInfo();
+
+        if(allNetworkInfos != null && allNetworkInfos.length > 0) {
+
+            allNetworkInfo += "Found " + allNetworkInfos.length + " networks\n";
+            int count = 1;
+
+            for(NetworkInfo info : allNetworkInfos) {
+                allNetworkInfo += String.format("--------[Network#%d]---------\n", count);
+                // check out for type
+                switch (info.getType()) {
+                    case ConnectivityManager.TYPE_WIFI:
+                        allNetworkInfo += "Type: WIFI; Status: " + (info.isConnected() ? "Connected" :
+                                "Disconnected");
+                        break;
+                    case ConnectivityManager.TYPE_MOBILE:
+                        allNetworkInfo += "Type: MOBILE; Status: " + (info.isConnected() ? "Connected" :
+                                "Disconnected");
+                        break;
+                    case ConnectivityManager.TYPE_BLUETOOTH:
+                        allNetworkInfo += "Type: BLUETOOTH; Status: " + (info.isConnected() ? "Connected" :
+                                "Disconnected");
+                        break;
+                    case ConnectivityManager.TYPE_WIMAX:
+                        allNetworkInfo += "Type: WIMAX; Status: " + (info.isConnected() ? "Connected" :
+                                "Disconnected");
+                        break;
+                    case ConnectivityManager.TYPE_VPN:
+                        allNetworkInfo += "Type: VPN; Status: " + (info.isConnected() ? "Connected" :
+                                "Disconnected");
+                        break;
+                    default:
+                        allNetworkInfo += "Type: Unknown; Status: Unavailable";
+                        break;
+                }
+                count++;
+            }
+            allNetworkInfo += "----------------------------\n";
+        } else {
+            allNetworkInfo += "Found 0 available network\n";
+        }
+    }
+
+    /**
+     * Bluetooth methods
+     */
+    public void getBluetoothInformation() {
+        bluetoothManager = (BluetoothManager) this.parentActivity.getApplicationContext()
+                .getSystemService(Context.BLUETOOTH_SERVICE);
+
+        bluetoothAdapter = bluetoothManager.getAdapter();
+
+        bluetoothDeviceState += String.format("State: %s\n Discover: %s\n Scan: %s",getBluetoothDeviceState(),
+                getBluetoothDiscoveringState(),getBluetoothScanMode());
+
+        bluetoothDeviceName = bluetoothAdapter.getName();
+        bluetoothDeviceAddress = getBluetoothMacAddress();
+        getBluetoothFeaturesSupported();
+        bluetoothPairedDevicesInfo = getPairedBluetoothDevices();
+    }
+
+    private String getBluetoothDeviceState() {
+        switch (bluetoothAdapter.getState()) {
+            case BluetoothAdapter.STATE_ON:
+                return "On";
+            case BluetoothAdapter.STATE_TURNING_ON:
+                return "Turing on";
+            case BluetoothAdapter.STATE_TURNING_OFF:
+                return "Turning off";
+            default:
+                return "Off";
+        }
+    }
+
+    private String getBluetoothDiscoveringState() {
+        return bluetoothAdapter.isDiscovering() ? "Discovering" : "Not discovering";
+    }
+
+    private String getBluetoothScanMode() {
+        switch (bluetoothAdapter.getScanMode()) {
+            case BluetoothAdapter.SCAN_MODE_CONNECTABLE:
+                return "Connectable";
+            case BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE:
+                return "Connectable & Discoverable";
+            default:
+                return "None";
+        }
+    }
+
+    private String getBluetoothMacAddress() {
+        String address = "";
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M){
+            try {
+                Field mServiceField = bluetoothAdapter.getClass().getDeclaredField("mService");
+                mServiceField.setAccessible(true);
+
+                Object btManagerService = mServiceField.get(bluetoothAdapter);
+
+                if (btManagerService != null) {
+                    address = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+                }
+            } catch (NoSuchFieldException e) {
+
+            } catch (NoSuchMethodException e) {
+
+            } catch (IllegalAccessException e) {
+
+            } catch (InvocationTargetException e) {
+
+            }
+        } else {
+            address = bluetoothAdapter.getAddress();
+        }
+
+        return address;
+    }
+
+    private void getBluetoothFeaturesSupported() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            nwBluetoothFeaturesSupported();
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            owBluetoothFeaturesSupported();
+        } else {
+            unBluetoothFeaturesSupported();
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
+    private void nwBluetoothFeaturesSupported() {
+        bluetoothLE2MPHY = bluetoothAdapter.isLe2MPhySupported();
+        bluetoothLECodedPHY = bluetoothAdapter.isLeCodedPhySupported();
+        bluetoothLEExtendedAdvertising = bluetoothAdapter.isLeExtendedAdvertisingSupported();
+        bluetoothMultiAdvertisement = bluetoothAdapter.isMultipleAdvertisementSupported();
+        bluetoothOffloadedFilters = bluetoothAdapter.isOffloadedFilteringSupported();
+        bluetoothOffloadedScanBatching = bluetoothAdapter.isOffloadedScanBatchingSupported();
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void owBluetoothFeaturesSupported() {
+        bluetoothLE2MPHY = bluetoothLECodedPHY = bluetoothLEExtendedAdvertising = false;
+        bluetoothMultiAdvertisement = bluetoothAdapter.isMultipleAdvertisementSupported();
+        bluetoothOffloadedFilters = bluetoothAdapter.isOffloadedFilteringSupported();
+        bluetoothOffloadedScanBatching = bluetoothAdapter.isOffloadedScanBatchingSupported();
+    }
+
+    private void unBluetoothFeaturesSupported() {
+        bluetoothLE2MPHY = bluetoothLECodedPHY = bluetoothLEExtendedAdvertising
+                = bluetoothMultiAdvertisement = bluetoothOffloadedFilters
+                = bluetoothOffloadedScanBatching  = false;
+    }
+
+    private String getPairedBluetoothDevices() {
+        String info = "Checking for paired bluetooth devices\n";
+
+        Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+
+        if(pairedDevices.isEmpty()) {
+            info += "Found 0 paired devices \n";
+        } else {
+            info += String.format("Found %d paired device(s)\n", pairedDevices.size());
+            info += "---------------------------\n";
+            int count = 1;
+
+            for(BluetoothDevice device : pairedDevices) {
+                info += String.format("Extracting info of device#%d:\n", count);
+
+                info += String.format("Name: %s;\n", device.getName());
+                info += String.format("Address: %s;\n", device.getAddress());
+                info += String.format("Type: %s;\n", getBluetoothDeviceType(device));
+
+                info += "---------------------------";
+            }
+        }
+
+        return info;
+    }
+
+    private String getBluetoothDeviceType(BluetoothDevice device) {
+        switch (device.getType()) {
+            case BluetoothDevice.DEVICE_TYPE_CLASSIC:
+                return "Classic";
+            case BluetoothDevice.DEVICE_TYPE_LE:
+                return "LE";
+            case BluetoothDevice.DEVICE_TYPE_DUAL:
+                return "Dual";
+            default:
+                return "Unknown";
+        }
+    }
+
+    /**
+     * Device methods
+     */
 }
